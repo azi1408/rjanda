@@ -1,0 +1,22 @@
+<?php
+session_start();
+
+// Connect to the database
+$conn = new mysqli("localhost", "your_username", "your_password", "your_database");
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Check user login
+if (!isset($_SESSION['user_id'])) {
+    die("Please log in to view your orders.");
+}
+
+$user_id = $_SESSION['user_id'];
+
+// Fetch orders
+$sql = "SELECT * FROM orders WHERE user_id = $user_id ORDER BY order_date DESC";
+$result = $conn->query($sql);
+?>//
