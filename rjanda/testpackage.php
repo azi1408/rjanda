@@ -245,63 +245,6 @@ $availability_stmt->close();
             color: red;
             margin-top: 20px;
         }
-
-        .summary-actions {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 20px;
-            gap: 10px;
-        }
-
-        .cancel-btn, .confirm-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            flex: 1;
-            transition: all 0.3s ease;
-        }
-
-        .cancel-btn {
-            background: #f44336;
-            color: white;
-        }
-
-        .confirm-btn {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .cancel-btn:hover {
-            background: #d32f2f;
-        }
-
-        .confirm-btn:hover {
-            background: #388e3c;
-        }
-
-        #orderSummary {
-            background: #f8f8f8;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-        }
-
-        #orderSummary p {
-            margin: 8px 0;
-            color: #333;
-        }
-
-        #orderSummary .total-price {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #4CAF50;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-        }
     </style>
 </head>
 <body>
@@ -313,10 +256,7 @@ $availability_stmt->close();
     <div class="nav-links">
         <a href="order_details.php">My Orders</a>
         <a href="home.php">Home</a>
-        <a href="account.php">Account Settings</a>
-        <a href="orders.php">Packages</a>
         <a href="show_reviews.php">Reviews</a>
-        <a href="chat.php">Chat with Admin</a>
         <a href="logout.php">Logout</a>
     </div>
 </nav>
@@ -328,7 +268,7 @@ $availability_stmt->close();
                 <h3><?= htmlspecialchars($row['package_name']) ?></h3>
                 <p><strong>Dishes:</strong> <?= nl2br(htmlspecialchars($row['dishes'])) ?></p>
                 <p><strong>Desserts:</strong> <?= nl2br(htmlspecialchars($row['desserts'])) ?></p>
-                <p><strong>Price per Guest:</strong> ₱<?= number_format($row['price'], 2) ?></p>
+                <p><strong>Price:</strong> ₱<?= number_format($row['price'], 2) ?></p>
                 <p><strong>Description:</strong> <?= nl2br(htmlspecialchars($row['description'])) ?></p>
                 <p><strong>Max Dishes:</strong> <?= $row['max_dishes'] ?> | <strong>Max Desserts:</strong> <?= $row['max_desserts'] ?></p>
                 <button type="button" class="order-btn" onclick="openModal(<?= $row['id'] ?>)">Make an Order</button>
@@ -344,7 +284,7 @@ $availability_stmt->close();
 <div id="orderModal" class="modal" style="display:none;">
     <div class="modal-content">
         <span class="close" onclick="closeModal()">&times;</span>
-        <form id="orderForm" onsubmit="return showOrderSummary(event)">
+        <form action="submit_order.php" method="POST" onsubmit="return validateOrderForm()">
             <input type="hidden" name="package_id" id="package_id">
             <h2>Submit Order</h2>
             <label>Name:</label>
@@ -369,33 +309,25 @@ $availability_stmt->close();
 
             <label>Select Desserts (<span id="dessertLimit">0</span> max):</label>
             <div id="dessertOptions"></div>
-            
-            <div style="background-color: #fff3cd; color: #856404; padding: 10px; border-radius: 8px; margin: 15px 0; border: 1px solid #ffeeba;">
-                <strong>Note:</strong> Please select a date at least 7 days in advance from today's date.
+
+            <div style="background-color: #f8f8f8; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #4CAF50;">
+                <h4 style="margin: 0 0 10px 0; color: #333;">📅 Date Selection Rules:</h4>
+                <ul style="margin: 0; padding-left: 20px; color: #555;">
+                    <li>Please select a date at least 7 days before your event</li>
+                    <li>Red dates indicate unavailable dates</li>
+                    <li>Click on an available date to select it</li>
+                </ul>
             </div>
-            
+
             <div id="calendar" class="calendar"></div>
-            <div style="margin-top: 15px; padding: 10px; background-color: #f8f8f8; border-radius: 8px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Selected Date:</label>
-                <div id="selectedDateDisplay" style="color: #4CAF50; font-size: 16px; font-weight: bold;">No date selected</div>
+            <div id="selected-date-display" style="background-color: #f8f8f8; padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; color: #333; font-weight: bold;">
+                Selected Date: <span id="selected-date-text">No date selected</span>
             </div>
             <input type="hidden" name="order_date" id="order_date" required>
 
-            <button type="submit">Review Order</button>
+            <button type="submit">Submit Order</button>
         </form>
-    </div>
-</div>
-
-<!-- Summary Modal -->
-<div id="summaryModal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <span class="close" onclick="closeSummaryModal()">&times;</span>
-        <h2>Order Summary</h2>
-        <div id="orderSummary"></div>
-        <div class="summary-actions">
-            <button onclick="closeSummaryModal()" class="cancel-btn">Edit Order</button>
-            <button onclick="submitOrder()" class="confirm-btn">Confirm Order</button>
-        </div>
+       
     </div>
 </div>
 
@@ -427,214 +359,107 @@ function openModal(packageId) {
     
     // Initialize calendar when modal opens
     const unavailableDates = <?= json_encode($unavailable_dates) ?>;
-    const today = new Date();
-    const minDate = new Date(today);
-    minDate.setDate(today.getDate() + 7); // Set minimum date to 7 days from today
-    
-    // Update the calendar initialization
     $('#calendar').fullCalendar({
         header: { 
-            left: '',  
+            left: 'prev',  
             center: 'title',
-            right: ''  
+            right: 'next'  
         },
         defaultView: 'month',
-        height: 400,
-        contentHeight: 400,
-        aspectRatio: 1.2,
+        events: unavailableDates.map(date => ({
+            title: '',
+            start: date, 
+            color: '#ff4d4d',
+        })),
         dayRender: function(date, cell) {
-            const currentDate = date.toDate();
-            const dateStr = date.format('YYYY-MM-DD');
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            // Remove any existing classes
-            cell.removeClass('unavailable too-soon selected-date');
-            
-            // Check if date is today
-            if (currentDate.getTime() === today.getTime()) {
-                cell.addClass('today');
-                // Add today indicator
-                cell.append('<div class="today-indicator"></div>');
-            }
-            // Check if date is too soon (less than 7 days from today)
-            else if (currentDate < minDate) {
-                cell.addClass('too-soon');
-            }
-            // Check if date is unavailable
-            else if (unavailableDates.includes(dateStr)) {
-                cell.addClass('unavailable');
+            if (unavailableDates.includes(date.format('YYYY-MM-DD'))) {
+                cell.css("background-color", "#ff4d4d");
+                cell.css("cursor", "not-allowed");
+            } else {
+                cell.css("cursor", "pointer");
             }
         },
         dayClick: function(date, jsEvent, view) {
-            const currentDate = date.toDate();
-            const dateStr = date.format('YYYY-MM-DD');
-            
-            // Only allow selection if date is valid
-            if (currentDate >= minDate && !unavailableDates.includes(dateStr)) {
-                // Remove selected class from all days
+            // Check if the clicked date is not in unavailable dates
+            if (!unavailableDates.includes(date.format('YYYY-MM-DD'))) {
+                // Remove any existing selected date
                 $('.fc-day').removeClass('selected-date');
                 
-                // Add selected class to clicked day
-                $(jsEvent.target).closest('.fc-day').addClass('selected-date');
-                
-                // Update the selected date in the input field
-                document.getElementById('order_date').value = dateStr;
+                // Set the selected date in the input field
+                document.getElementById('order_date').value = date.format('YYYY-MM-DD');
                 
                 // Update the selected date display
-                document.getElementById('selectedDateDisplay').textContent = date.format('MMMM D, YYYY');
+                document.getElementById('selected-date-text').textContent = date.format('MMMM D, YYYY');
+                
+                // Add selected class to the clicked date
+                $(jsEvent.target).closest('.fc-day').addClass('selected-date');
             }
-        }
+        },
+        height: 300,
+        contentHeight: 300,
+        aspectRatio: 1.2
     });
 
     // Add some CSS for the selected date and submit button
     const style = document.createElement('style');
     style.textContent = `
-        /* Calendar Container */
-        .fc-view-container {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        /* Calendar Header */
-        .fc-header {
-            padding: 10px;
-            background: #f8f8f8;
-        }
-
-        /* Calendar Body */
-        .fc-body {
-            background: white;
-        }
-
-        /* Calendar Grid */
-        .fc-grid {
-            border: none !important;
-        }
-
-        /* Calendar Day Cells */
-        .fc-day {
-            border: 1px solid #e0e0e0 !important;
-            min-height: 40px !important;
-            position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            padding: 0 !important;
-        }
-
-        .fc-day:hover:not(.disabled):not(.fc-other-month) {
-            background-color: #e8f5e9 !important;
-        }
-
-        /* Day Number */
-        .fc-day-number {
-            position: relative;
-            font-size: 14px;
-            color: #333;
-            padding: 8px !important;
-            text-align: center;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2;
-        }
-
-        /* Selected Date */
         .selected-date {
             background-color: #4CAF50 !important;
-        }
-
-        .selected-date .fc-day-number {
-            color: white !important;
-            font-weight: bold;
-        }
-
-        /* Unavailable Dates */
-        .fc-day.unavailable {
-            background-color: #ff4d4d !important;
-            cursor: not-allowed;
-        }
-
-        .fc-day.unavailable .fc-day-number {
             color: white !important;
         }
-
-        /* Too Soon Dates */
-        .fc-day.too-soon {
-            background-color: #e0e0e0 !important;
-            opacity: 0.5;
-            cursor: not-allowed;
+        .fc-day:hover:not(.fc-other-month) {
+            background-color: #e8f5e9 !important;
         }
-
-        /* Today's Date */
-        .fc-day.today {
-            background-color: transparent !important;
+        .fc-day.selected-date:hover {
+            background-color: #4CAF50 !important;
         }
-
-        .fc-day.today .fc-day-number {
-            color: white !important;
-            font-weight: bold !important;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2) !important;
+        .fc-day {
+            min-height: 30px !important;
         }
-
-        .today-indicator {
+        .fc-day-number {
+            font-size: 0.9em;
+        }
+        .fc-header-title h2 {
+            font-size: 1.2em;
+        }
+        .fc-day {
+            position: relative;
+        }
+        .fc-day > div {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 32px !important;
-            height: 32px !important;
-            background: linear-gradient(135deg, #4CAF50, #45a049) !important;
-            border-radius: 50%;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 1;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-            border: 2px solid #fff !important;
         }
-
-        .fc-day.today .fc-day-number {
+        .fc-day-number {
             position: relative;
             z-index: 2;
         }
-
-        /* Other Month Dates */
-        .fc-other-month {
-            background-color: #f8f8f8 !important;
-            cursor: default;
+        .fc-button {
+            background: #4CAF50 !important;
+            border: none !important;
+            padding: 8px 12px !important;
+            border-radius: 4px !important;
+            color: white !important;
+            font-weight: bold !important;
+            transition: all 0.3s ease !important;
         }
-
-        .fc-other-month .fc-day-number {
-            color: #999 !important;
+        .fc-button:hover {
+            background: #45a049 !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-
-        /* Remove default FullCalendar styles */
-        .fc-day.fc-today.fc-state-highlight {
-            background: none !important;
+        .fc-button:active {
+            transform: translateY(0);
         }
-
-        .fc-day.fc-today.fc-state-highlight > div {
-            background: none !important;
+        .fc-button.fc-state-active {
+            background: #388e3c !important;
         }
-
-        /* Ensure the entire cell is clickable */
-        .fc-day > div {
-            height: 100% !important;
-            width: 100% !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
+        .fc-header {
+            margin-bottom: 10px !important;
         }
-
-        /* Calendar Header Title */
-        .fc-header-title h2 {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-        }
-
-        /* Submit Button Styles */
         .modal-content form button[type="submit"] {
             background: linear-gradient(to right, #4CAF50, #45a049);
             color: white;
@@ -651,19 +476,21 @@ function openModal(packageId) {
             letter-spacing: 1px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
         .modal-content form button[type="submit"]:hover {
             background: linear-gradient(to right, #45a049, #3d8b40);
             transform: translateY(-2px);
             box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
         }
-
         .modal-content form button[type="submit"]:active {
             transform: translateY(0);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
     `;
     document.head.appendChild(style);
+
+    // Add legend after calendar initialization
+    
+    $('#calendar').after(legendHtml);
 }
 
 function enforceLimit(containerId, limit) {
@@ -696,86 +523,7 @@ function initMap() {
 
 $(function() {
     // Remove the calendar initialization from here since it's now in openModal
-});
-
-function showOrderSummary(event) {
-    event.preventDefault();
-    
-    const form = document.getElementById('orderForm');
-    const formData = new FormData(form);
-    const packageId = formData.get('package_id');
-    const package = packages.find(p => p.id == packageId);
-    
-    // Calculate total price
-    const guestCount = parseInt(formData.get('guest_count'));
-    // Remove any commas and ensure proper parsing of the price
-    const basePrice = parseFloat(package.price.toString().replace(/,/g, ''));
-    const totalPrice = basePrice * guestCount;
-    
-    // Get selected dishes and desserts
-    const selectedDishes = Array.from(formData.getAll('selected_dishes[]'));
-    const selectedDesserts = Array.from(formData.getAll('selected_desserts[]'));
-    
-    // Create summary HTML
-    const summaryHTML = `
-        <p><strong>Package:</strong> ${package.package_name}</p>
-        <p><strong>Customer Name:</strong> ${formData.get('customer_name')}</p>
-        <p><strong>Event Type:</strong> ${formData.get('event_type')}</p>
-        <p><strong>Number of Guests:</strong> ${guestCount}</p>
-        <p><strong>Event Date:</strong> ${formData.get('order_date')}</p>
-        <p><strong>Selected Dishes:</strong></p>
-        <ul>${selectedDishes.map(dish => `<li>${dish}</li>`).join('')}</ul>
-        <p><strong>Selected Desserts:</strong></p>
-        <ul>${selectedDesserts.map(dessert => `<li>${dessert}</li>`).join('')}</ul>
-        <p><strong>Price per Guest:</strong> ₱${basePrice.toFixed(2)}</p>
-        <p class="total-price">Total Price: ₱${totalPrice.toFixed(2)}</p>
-    `;
-    
-    document.getElementById('orderSummary').innerHTML = summaryHTML;
-    document.getElementById('orderModal').style.display = 'none';
-    document.getElementById('summaryModal').style.display = 'block';
-    
-    return false;
-}
-
-function closeSummaryModal() {
-    document.getElementById('summaryModal').style.display = 'none';
-    document.getElementById('orderModal').style.display = 'block';
-}
-
-function submitOrder() {
-    const form = document.getElementById('orderForm');
-    const formData = new FormData(form);
-    const packageId = formData.get('package_id');
-    const package = packages.find(p => p.id == packageId);
-    
-    // Calculate total price
-    const guestCount = parseInt(formData.get('guest_count'));
-    const basePrice = parseFloat(package.price);
-    const totalPrice = basePrice * guestCount;
-    
-    // Add total price to form data
-    formData.append('total_price', totalPrice);
-    
-    // Submit the form to submit_order.php
-    fetch('submit_order.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Order submitted successfully!');
-            window.location.href = 'order_details.php';
-        } else {
-            alert('Error submitting order: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error submitting order. Please try again.');
     });
-}
 </script>
 
 </body>

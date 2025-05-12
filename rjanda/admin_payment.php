@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['mark_paid'])) {
         // Mark the order as paid
-        $stmt = $conn->prepare("UPDATE catering_orders SET payment_method = 'Paid' WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE orders SET payment_method = 'Paid', status = 'paid' WHERE id = ?");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         header("Location: admin_home.php");
@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['mark_unpaid'])) {
         // Mark the order as unpaid
-        $stmt = $conn->prepare("UPDATE catering_orders SET payment_method = NULL WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE orders SET payment_method = NULL, status = 'Pending' WHERE id = ?");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         header("Location: admin_home.php");
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['mark_done'])) {
         // Mark the order as "Order Completed"
-        $stmt = $conn->prepare("UPDATE catering_orders SET status = 'done' WHERE id = ?");
+        $stmt = $conn->prepare("UPDATE orders SET status = 'done' WHERE id = ?");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         header("Location: admin_home.php");  // Redirect to orders page after the update
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (isset($_POST['delete_order'])) {
         // Delete the completed order
-        $stmt = $conn->prepare("DELETE FROM catering_orders WHERE id = ?");
+        $stmt = $conn->prepare("DELETE FROM orders WHERE id = ?");
         $stmt->bind_param("i", $order_id);
         $stmt->execute();
         header("Location: admin_home.php");

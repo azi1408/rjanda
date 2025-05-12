@@ -10,11 +10,24 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $user_id = $_SESSION['user_id'];  // Safe to access now
-// Fetch only orders that belong to the current user
-$stmt = $conn->prepare("SELECT * FROM catering_orders WHERE user_id = ? ORDER BY created_at DESC");
+// Fetch orders that belong to the current user by joining orders and registertb
+$stmt = $conn->prepare("
+    SELECT orders.*, registertb.name 
+    FROM orders 
+    JOIN registertb ON orders.user_id = registertb.userid  -- Correct column name
+    WHERE registertb.userid = ? 
+    ORDER BY orders.created_at DESC
+");
+
+if ($stmt === false) {
+    die('Error preparing the query: ' . $conn->error);
+}
+
 $stmt->bind_param("i", $user_id);  // Bind the user's ID to the query
 $stmt->execute();
 $result = $stmt->get_result();
+
+
 ?>
 
 <!DOCTYPE html>
@@ -160,6 +173,68 @@ $result = $stmt->get_result();
         .pay-btn.cancel:hover {
             background-color: #ff4d4d;
         }
+       /* Password Modal Styling */
+#passwordModal {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+
+#passwordModal.show {
+    display: flex;
+}
+
+.modal-box {
+    background: #fff;
+    color: #333;
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    text-align: center;
+}
+
+.modal-box input[type="password"] {
+    width: 100%;
+    padding: 10px;
+    margin-top: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.button-group {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-around;
+}
+
+.button-group button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.button-group button[type="submit"] {
+    background-color: #4caf50;
+    color: white;
+}
+
+.button-group button[type="button"] {
+    background-color: #f44336;
+    color: white;
+}
+
+
     </style>
 </head>
 <body>
@@ -171,10 +246,41 @@ $result = $stmt->get_result();
     </div>
     <ul>
         <li><a href="home.php">Home</a></li>
-        <li><a href="account.php">Account Settings</a></li>
+        <li><a href="account.php" class="account-link">Account Settings</a></li>
         <li><a href="orders.php">Packages</a></li>
     </ul>
 </nav>
+<div id="passwordModal" class="modal-overlay">
+    <div class="modal-box">
+        <h3>Confirm Your Password</h3>
+        <form method="POST" action="verify_password.php">
+            <input type="hidden" name="redirect_to" value="account.php">
+            
+            <div style="position: relative;">
+                <input type="password" name="confirm_password" id="confirm_password" placeholder="Enter your password" required style="padding-right: 40px;">
+                
+                <!-- Show/Hide Button -->
+                <button type="button" onclick="togglePasswordVisibility()" style="
+                    position: absolute;
+                    right: 10px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    color: #333;
+                ">👁</button>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit">Confirm</button>
+                <button type="button" onclick="closePasswordPopup()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 
 <div class="container">
     <h2>📋 Order List</h2>  
@@ -184,31 +290,32 @@ $result = $stmt->get_result();
             <tr>
                 <th>Customer</th>
                 <th>Event Date</th>
-                <th>Guests</th>
+                <th>Guests No.</th>
                 <th>Address</th>    
-                <th>Package</th>
-                <th>Dishes</th>
-                <th>Desserts</th>
+                <th>Event Type
+                <th>Selected Dishes </th>
+                <th>Selected Desserts</th>
                 <th>Status</th>
             </tr>
             <?php while ($row = $result->fetch_assoc()): ?>
                 <tr>
                     <td><?= htmlspecialchars($row['name']) ?></td>
-                    <td><?= htmlspecialchars($row['events_date']) ?></td>
-                    <td><?= htmlspecialchars($row['guests']) ?></td>
+                    <td><?= htmlspecialchars($row['order_date']) ?></td>
+                    <td><?= htmlspecialchars($row['guest_count']) ?></td>
                     <td><?= htmlspecialchars($row['address']) ?></td>
-                    <td><?= htmlspecialchars($row['package_name']) ?></td>
+                    <td><?= htmlspecialchars($row['event_type']) ?></td>
+                    
                    
                     <td>
                         <?php 
                         // Debugging the value of dishes
-                        echo nl2br(htmlspecialchars($row['dishes'])); 
+                        echo nl2br(htmlspecialchars($row['selected_dishes'])); 
                         ?>
                     </td>
                     <td>
                         <?php 
                         // Debugging the value of desserts
-                        echo nl2br(htmlspecialchars($row['desserts'])); 
+                        echo nl2br(htmlspecialchars($row['selected_desserts'])); 
                         ?>
                     </td>
                     <td>
@@ -222,6 +329,8 @@ $result = $stmt->get_result();
     <?php endif; ?>
 
 
+                        <?php elseif ($row['status'] === 'pending payment' && $row['payment_method'] === 'GCash'): ?>
+                            <span class="status-pending">⏳ Pending GCash Payment Verification</span>
                         <?php elseif (!empty($row['payment_method'])): ?>
                             <span class="status-paid">Paid (<?= htmlspecialchars($row['payment_method']) ?>)</span>
                         <?php else: ?>
@@ -238,22 +347,28 @@ $result = $stmt->get_result();
                                 <form method="post" action="submit_payment.php" id="payment-form-<?= $row['id'] ?>">
                                     <input type="hidden" name="order_id" value="<?= $row['id'] ?>">
 
-                                    <div class="card-section" id="card-section-<?= $row['id'] ?>" style="margin-top: 10px;">
+                                    <div class="card-section" id="card-section-<?= $row['id'] ?>" style="margin-top: 10px; display:none;">
                                         <label>Card Number:</label>
-                                        <input type="text" name="card_number" id="card-input-<?= $row['id'] ?>" placeholder="xxxx-xxxx-xxxx-xxxx" required>
+                                        <input type="text" name="card_number" id="card-input-<?= $row['id'] ?>" placeholder="xxxx-xxxx-xxxx-xxxx">
                                     </div>
 
                                     <label style="margin-top: 10px;">Payment Method:</label>
                                     <select name="payment_method" id="payment-method-<?= $row['id'] ?>" required onchange="handlePaymentMethodChange(<?= $row['id'] ?>)">
                                         <option value="">Select</option>
                                         <option value="GCash">GCash</option>
-                                        <option value="Bank Transfer">Bank Transfer</option>
+                                        <option value="Maya">Maya</option>
                                     </select>
 
                                     <div class="gcash-note" id="gcash-note-<?= $row['id'] ?>" style="display:none; text-align: center;">
-                                        <p><strong>📱 PAY / SCAN THIS QR CODE TO PROCEED PAYMENT</strong></p>
+                                        <p><strong>📱 PAY / SCAN THIS QR CODE TO PROCEED PAYMENT (GCASH)</strong></p>
                                         <img src="gcash.png" alt="GCash QR Code" style="max-width: 200px; border: 2px solid #333; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); margin: 10px auto;">
                                         <p>GCash Number: <strong>099999999999</strong></p>
+                                    </div>
+
+                                    <div class="gcash-note" id="maya-note-<?= $row['id'] ?>" style="display:none; text-align: center;">
+                                        <p><strong>💳 PAY / SCAN THIS QR CODE TO PROCEED PAYMENT (MAYA)</strong></p>
+                                        <img src="maya_qr.png" alt="Maya QR Code" style="max-width: 200px; border: 2px solid #333; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); margin: 10px auto;">
+                                        <p>Maya Number: <strong>098888888888</strong></p>
                                     </div>
 
                                     <button type="submit" class="pay-btn">Pay Now</button>
@@ -268,22 +383,38 @@ $result = $stmt->get_result();
         <p>No orders found.</p>
     <?php endif; ?>
 </div>
-<!-- Review Modal -->
-<div id="reviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
-    <div style="background:#fff; color:#000; padding:30px; border-radius:12px; max-width:500px; width:90%;">
-        <h3 style="margin-top:0;">📝 Write a Review</h3>
-        <form method="post" action="submit_review.php">
-            <input type="hidden" name="order_id" id="reviewOrderId">
-            <textarea name="review" placeholder="Write your feedback..." rows="5" style="width:100%; border-radius:8px; padding:10px;" required></textarea>
-            <br><br>
-            <button type="submit" class="pay-btn">Submit Review</button>
-            <button type="button" class="pay-btn cancel" onclick="closeReviewModal()">Cancel</button>
-        </form>
-    </div>
-</div>
+
+<?php include 'review_modal.php'; ?>
 
 <script>
+    function togglePasswordVisibility() {
+    const input = document.getElementById('confirm_password');
+    const type = input.getAttribute('type');
+    input.setAttribute('type', type === 'password' ? 'text' : 'password');
+}
+    function openPasswordPopup() {
+        const modal = document.getElementById('passwordModal');
+        modal.classList.add('show');
+    }
+
+    function closePasswordPopup() {
+        const modal = document.getElementById('passwordModal');
+        modal.classList.remove('show');
+        setTimeout(() => {
+            modal.style.display = 'none';
+        }, 300);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+    const accountLink = document.querySelector('.account-link');
+    if (accountLink) {
+        accountLink.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('passwordModal').style.display = 'flex';
+        });
+    }
+});
+
     function openReviewModal(orderId) {
     document.getElementById('reviewOrderId').value = orderId;
     document.getElementById('reviewModal').style.display = 'flex';
@@ -296,22 +427,18 @@ function closeReviewModal() {
 
 function handlePaymentMethodChange(orderId) {
     const method = document.getElementById('payment-method-' + orderId).value;
-    const cardSection = document.getElementById('card-section-' + orderId);
-    const cardInput = document.getElementById('card-input-' + orderId);
     const gcashNote = document.getElementById('gcash-note-' + orderId);
+    const mayaNote = document.getElementById('maya-note-' + orderId);
 
-    if (method === 'GCash') {
-        cardSection.style.display = 'none';
-        cardInput.removeAttribute('required');
+    if (method === '') {
+        gcashNote.style.display = 'none';
+        mayaNote.style.display = 'none';
+    } else if (method === 'GCash') {
         gcashNote.style.display = 'block';
-    } else if (method === 'Cash on Delivery') {
-        cardSection.style.display = 'none';
-        cardInput.removeAttribute('required');
+        mayaNote.style.display = 'none';
+    } else if (method === 'Maya') {
         gcashNote.style.display = 'none';
-    } else {
-        cardSection.style.display = 'block';
-        cardInput.setAttribute('required', 'required');
-        gcashNote.style.display = 'none';
+        mayaNote.style.display = 'block';
     }
 }
 

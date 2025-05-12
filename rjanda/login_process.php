@@ -3,12 +3,15 @@ session_start();  // Start the session to store session variables
 include ('connection.php');
 
 if (isset($_POST['email']) && isset($_POST['password'])) {
-    $email = trim($_POST['email']);
+    $username = trim($_POST['email']); // We're using the email field for username
     $password = $_POST['password'];
 
-    // Query to fetch user data by email including the role
-    $sql = "SELECT * FROM registertb WHERE LOWER(username) = LOWER('$email')";
-    $result = $conn->query($sql);
+    // Query to fetch user data by username including the role
+    $sql = "SELECT * FROM registertb WHERE LOWER(username) = LOWER(?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
         // Fetch the user data
@@ -18,14 +21,15 @@ if (isset($_POST['email']) && isset($_POST['password'])) {
 
         // Verify if the entered password matches the hashed password
         if (password_verify($password, $stored_hashed_password)) {
-            // Successful login, set session variables
+            // Successful login, set only necessary session variables
             $_SESSION['user_id'] = $row['userid'];  // Store user ID in the session
-            $_SESSION['user_email'] = $row['email'];  // Store email in session
             $_SESSION['user_role'] = $user_role;  // Store user role in session (admin or user)
 
-            // If user is an admin, redirect to admin page, else to home page
+            // Redirect based on user role
             if ($user_role == 'admin') {
-                header('Location: admin_home.php');  // Admin dashboard or order management
+                header('Location: admin_home.php');  // Admin dashboard
+            } else if ($user_role == 'moderator') {
+                header('Location: mod_packages.php');  // Moderator dashboard
             } else {
                 header('Location: home.php');  // Regular user dashboard
             }
@@ -38,7 +42,7 @@ if (isset($_POST['email']) && isset($_POST['password'])) {
         }
     } else {
         echo "<script>
-        alert('No user found with that email!');
+        alert('No user found with that username!');
         window.history.back();
         </script>";
     }

@@ -78,6 +78,35 @@ if (isset($_POST['promote_user'])) {
     }
     $stmt->close();
 }
+
+// Handle role update
+if (isset($_POST['update_role'])) {
+    $userid = $_POST['userid'];
+    $new_role = $_POST['new_role'];
+    
+    // Prevent changing the last admin's role
+    if ($new_role !== 'admin') {
+        $check_admin_sql = "SELECT COUNT(*) as admin_count FROM registertb WHERE role = 'admin'";
+        $admin_result = $conn->query($check_admin_sql);
+        $admin_count = $admin_result->fetch_assoc()['admin_count'];
+        
+        if ($admin_count <= 1) {
+            echo "<script>alert('Cannot change role: At least one admin must remain.'); window.location.href = 'admin_users.php';</script>";
+            exit();
+        }
+    }
+    
+    $update_sql = "UPDATE registertb SET role = ? WHERE userid = ?";
+    $stmt = $conn->prepare($update_sql);
+    $stmt->bind_param("si", $new_role, $userid);
+
+    if ($stmt->execute()) {
+        echo "<script>alert('User role updated successfully.'); window.location.href = 'admin_users.php';</script>";
+    } else {
+        echo "<script>alert('Failed to update user role.'); window.location.href = 'admin_users.php';</script>";
+    }
+    $stmt->close();
+}
 ?>
 
 <!DOCTYPE html>
@@ -122,7 +151,6 @@ if (isset($_POST['promote_user'])) {
 
         .navbar ul {
             list-style: none;
-            display: flex;
             gap: 20px;
             margin: 0;
             padding: 0;
@@ -195,16 +223,96 @@ if (isset($_POST['promote_user'])) {
             color: #ff9800;
             font-weight: bold;
         }
+
+        .status-moderator {
+            color: #2196f3;
+            font-weight: bold;
+        }
+
+        .role-select {
+            padding: 6px 10px;
+            border-radius: 4px;
+            border: 1px solid #555;
+            background-color: #2a2a2a;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .role-select:focus {
+            outline: none;
+            border-color: #d4b895;
+        }
+
+        .update-role-btn {
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .update-role-btn:hover {
+            background-color: #1976d2;
+        }
+
+        .delete-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background-color: #d32f2f;
+        }
+
+        .menu-toggle {
+            font-size: 28px;
+            background: none;
+            border: none;
+            color: beige;
+            cursor: pointer;
+            display: block; /* Always show */
+        }
+
+        .nav-links {
+            display: none;
+            flex-direction: column;
+            position: absolute;
+            top: 70px;
+            right: 30px;
+            background-color: #222;
+            border-radius: 8px;
+            padding: 10px 0;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .nav-links.show {
+            display: flex;
+        }
+
+        .menu-toggle {
+            display: block;
+        }
     </style>
 </head>
 <body>
 
 <nav class="navbar">
-    <div style="display: flex; align-items: center;">
+    <div class="navbar-left">
         <img src="logo.jfif" alt="Logo" class="logo-img">
-        <span class="title">RJ & A Catering Services - Admin Panel</span>
+        <?php if (!empty($user_name)) {
+            echo "<span class='greeting'>Hello, <strong>$user_name</strong>!</span>";
+        } ?>
     </div>
-    <ul>
+
+    <!-- Hamburger Icon -->
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+
+    <!-- Nav Links -->
+    <ul id="navLinks" class="nav-links">
         <li><a href="admin_dashboard.php">Dashboard</a></li>
         <li><a href="admin_home.php">Orders</a></li>
         <li><a href="logout.php">Logout</a></li>
@@ -216,48 +324,66 @@ if (isset($_POST['promote_user'])) {
 
     <?php if ($result->num_rows > 0): ?>
     <table>
-        <tr>
-            <th>User ID</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Actions</th>
-        </tr>
-        <?php while ($row = $result->fetch_assoc()): ?>
+        <thead>
             <tr>
-                <td><?= htmlspecialchars($row['userid']) ?></td>
-                <td><?= htmlspecialchars($row['name']) ?></td>
-                <td><?= htmlspecialchars($row['username']) ?></td>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Current Role</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php while ($row = $result->fetch_assoc()): ?>
+            <tr>
+                <td><?php echo $row['userid']; ?></td>
+                <td><?php echo htmlspecialchars($row['name']); ?></td>
+                <td><?php echo htmlspecialchars($row['username']); ?></td>
                 <td>
-                    <?= $row['role'] === 'admin' ? '<span class="status-admin">Admin</span>' : '<span class="status-user">User</span>' ?>
+                    <span class="status-<?php echo strtolower($row['role']); ?>">
+                        <?php echo ucfirst($row['role']); ?>
+                    </span>
                 </td>
                 <td>
-                    <?php if ($row['role'] !== 'admin'): ?>
-                        <!-- Only allow deletion for non-admin users -->
-                        <form method="POST" action="admin_users.php" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to delete this user?');">
-                            <input type="hidden" name="userid" value="<?= $row['userid'] ?>">
-                            <button type="submit" name="delete_user">Delete User</button>
-                        </form>
-
-                        <!-- Promote to Admin button -->
-                        <form method="POST" action="admin_users.php" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to promote this user to admin?');">
-                            <input type="hidden" name="userid" value="<?= $row['userid'] ?>">
-                            <button type="submit" name="promote_user">Promote to Admin</button>
-                        </form>
-                    <?php else: ?>
-                        <!-- Disable delete and promote buttons for admin users -->
-                        <button disabled>Admin - Cannot Delete</button>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="userid" value="<?php echo $row['userid']; ?>">
+                        <select name="new_role" class="role-select">
+                            <option value="user" <?php echo $row['role'] === 'user' ? 'selected' : ''; ?>>User</option>
+                            <option value="moderator" <?php echo $row['role'] === 'moderator' ? 'selected' : ''; ?>>Moderator</option>
+                            <option value="admin" <?php echo $row['role'] === 'admin' ? 'selected' : ''; ?>>Admin</option>
+                        </select>
+                        <button type="submit" name="update_role" class="update-role-btn">Update Role</button>
+                    </form>
+                    <?php if ($row['role'] !== 'admin' || $result->num_rows > 1): ?>
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="userid" value="<?php echo $row['userid']; ?>">
+                        <button type="submit" name="delete_user" class="delete-btn" onclick="return confirm('Are you sure you want to delete this user?')">Delete</button>
+                    </form>
                     <?php endif; ?>
                 </td>
             </tr>
-        <?php endwhile; ?>
+            <?php endwhile; ?>
+        </tbody>
     </table>
 <?php else: ?>
     <p>No users found.</p>
 <?php endif; ?>
 
 </div>
+<script>
+    function toggleMenu() {
+        document.getElementById("navLinks").classList.toggle("show");
+    }
 
+    // Close menu if clicked outside
+    document.addEventListener("click", function(event) {
+        const menu = document.getElementById("navLinks");
+        const button = document.querySelector(".menu-toggle");
+        if (!menu.contains(event.target) && !button.contains(event.target)) {
+            menu.classList.remove("show");
+        }
+    });
+</script>
 </body>
 </html>
 

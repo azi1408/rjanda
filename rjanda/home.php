@@ -233,6 +233,11 @@ nav span.greeting {
         }
 
         if (isset($_SESSION['user_id'])) {
+            // If user is logged in, show the Chat with Admin button
+            echo '<a href="chat.php">Chat with Admin</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
             // If user is logged in, show the Log Out button
             echo '<a href="logout.php">Log Out</a>';
         } else {

@@ -2,43 +2,55 @@
 session_start();
 include('connection.php');
 
-// Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    echo "<script>alert('Please log in to place an order.'); window.location.href='login.php';</script>";
+    echo json_encode(['success' => false, 'message' => 'Please log in to submit an order.']);
     exit;
 }
 
-$user_id = $_SESSION['user_id']; // Get the logged-in user's ID
-
-// Check if the form is submitted
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $packageName = $_POST['package_name'];
-    $name =($_POST['name']);
-    $event_date =$_POST['event_date'];  // Getting the event date from the form
+    $user_id = $_SESSION['user_id'];
+    $package_id = $_POST['package_id'];
+    $customer_name = $_POST['customer_name'];
+    $address = $_POST['address'];
+    $event_type = $_POST['event_type'];
+    $guest_count = $_POST['guest_count'];
+    $lat = $_POST['lat'];
+    $lng = $_POST['lng'];
+    $order_date = $_POST['order_date'];
+    $total_price = $_POST['total_price'];
+    $selected_dishes = isset($_POST['selected_dishes']) ? implode(', ', $_POST['selected_dishes']) : '';
+    $selected_desserts = isset($_POST['selected_desserts']) ? implode(', ', $_POST['selected_desserts']) : '';
 
-
-    $guests = (int) $_POST['guests'];
-    $address = $conn->real_escape_string($_POST['address']);
-
-    // Dishes and desserts (from checkbox arrays)
-    $dishes = isset($_POST['dishes']) ? implode(', ', $_POST['dishes']) : '';
-    $desserts = isset($_POST['desserts']) ? implode(', ', $_POST['desserts']) : '';
-
-    // Get latitude and longitude
-    $latitude = isset($_POST['lat']) ? $_POST['lat'] : '';
-    $longitude = isset($_POST['lng']) ? $_POST['lng '] : '';
-
-    // Save the order to the database
-    $stmt = $conn->prepare("INSERT INTO catering_orders(package_name, name, events_date, guests, address, dishes, desserts, latitude, longitude, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("sssisssiii",$packageName, $name, $event_date, $guests, $address, $dishes, $desserts, $latitude, $longitude,$user_id);
+    // Insert into catering_orders table
+    $stmt = $conn->prepare("INSERT INTO catering_orders (user_id, name, event_date, guests, address, latitude, longitude, special_requests, payment_method, status, total_price, selected_dishes, selected_desserts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?)");
+    
+    $special_requests = $event_type; // Using event_type as special_requests
+    $payment_method = 'Pending'; // Default payment method
+    
+    $stmt->bind_param("issdsdssdss", 
+        $user_id,
+        $customer_name,
+        $order_date,
+        $guest_count,
+        $address,
+        $lat,
+        $lng,
+        $special_requests,
+        $payment_method,
+        $total_price,
+        $selected_dishes,
+        $selected_desserts
+    );
 
     if ($stmt->execute()) {
-        echo "<script>alert('Order submitted successfully!'); window.location.href='orders.php';</script>";
+        echo json_encode(['success' => true, 'message' => 'Order submitted successfully']);
     } else {
-        echo "Error: " . $stmt->error;
+        echo json_encode(['success' => false, 'message' => 'Error submitting order: ' . $stmt->error]);
     }
 
     $stmt->close();
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid request method']);
 }
 
 $conn->close();
