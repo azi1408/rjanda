@@ -2,6 +2,7 @@
 session_start();
 include('connection.php');
 
+// Check if user is logged in and is a moderator
 if (!isset($_SESSION['user_id'])) {
     echo "<script>alert('You need to log in first.'); window.location.href = 'index.php';</script>";
     exit();
@@ -26,7 +27,10 @@ if ($role !== 'admin' && $role !== 'moderator') {
 }
 
 // Fetch reviews for completed orders
-$sql = "SELECT o.id, o.order_date, o.name AS customer_name, o.event_type, o.selected_dishes, o.selected_desserts, o.status, o.review FROM orders o WHERE o.status = 'done' AND o.review IS NOT NULL AND o.review != '' ORDER BY o.order_date DESC";
+$sql = "SELECT o.id, o.order_date, o.customer_name, o.event_type, o.selected_dishes, o.selected_desserts, o.status, o.reviews, o.rating 
+        FROM orders o 
+        WHERE o.status = 'done' AND o.reviews IS NOT NULL AND o.reviews != '' 
+        ORDER BY o.order_date DESC";
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -162,6 +166,11 @@ $result = $conn->query($sql);
             font-size: 1.05em;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
+        .star-rating {
+            color: #ffd700;
+            font-size: 1.2em;
+            margin: 5px 0;
+        }
     </style>
 </head>
 <body>
@@ -192,6 +201,7 @@ $result = $conn->query($sql);
             <th>Event Type</th>
             <th>Dishes</th>
             <th>Desserts</th>
+            <th>Rating</th>
             <th>Review</th>
         </tr>
         <?php if ($result && $result->num_rows > 0): ?>
@@ -203,11 +213,17 @@ $result = $conn->query($sql);
                     <td><?= htmlspecialchars($row['event_type']) ?></td>
                     <td><?= nl2br(htmlspecialchars($row['selected_dishes'])) ?></td>
                     <td><?= nl2br(htmlspecialchars($row['selected_desserts'])) ?></td>
-                    <td><div class="review-box">"<?= nl2br(htmlspecialchars($row['review'])) ?>"</div></td>
+                    <td>
+                        <div class="star-rating">
+                            <?php for ($i = 0; $i < $row['rating']; $i++) echo "★"; ?>
+                            <?php for ($i = $row['rating']; $i < 5; $i++) echo "☆"; ?>
+                        </div>
+                    </td>
+                    <td><div class="review-box">"<?= nl2br(htmlspecialchars($row['reviews'])) ?>"</div></td>
                 </tr>
             <?php endwhile; ?>
         <?php else: ?>
-            <tr><td colspan="7" style="text-align:center; color:#ccc;">No reviews found.</td></tr>
+            <tr><td colspan="8" style="text-align:center; color:#ccc;">No reviews found.</td></tr>
         <?php endif; ?>
     </table>
 </div>

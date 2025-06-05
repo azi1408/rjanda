@@ -75,6 +75,46 @@ $query->close();
             box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
         }
 
+        /* Hamburger Menu Styles */
+        .menu-toggle {
+            font-size: 28px;
+            background: none;
+            border: none;
+            color: beige;
+            cursor: pointer;
+            display: block;
+        }
+
+        .nav-links {
+            display: none;
+            flex-direction: column;
+            position: absolute;
+            top: 70px;
+            right: 30px;
+            background-color: #222;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-links.show {
+            display: flex;
+        }
+
         /* Container */
         .container {
             max-width: 600px;
@@ -135,33 +175,37 @@ $query->close();
         <span style="color: white; font-size: 1.2em; font-weight: bold;">RJ & A Catering Services</span>
     </div>
 
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
     <!-- Right side: Nav links -->
-     <div>
+    <ul id="navLinks" class="nav-links">
         <?php
-        
         if (isset($_SESSION['user_id'])) {
-            // If user is logged in, show the Home button
-            echo '<a href="home.php">Home </a>';
+            echo '<a href="home.php">Home</a>';
         }
 
         if (isset($_SESSION['user_id'])) {
-            // If user is logged in, show the Packages button
             echo '<a href="orders.php">Packages</a>';
         }
 
         if (isset($_SESSION['user_id'])) {
-            // If user is logged in, show the Payment Methods button
             echo '<a href="order_details.php">Payment Methods</a>';
         }
+
         if (isset($_SESSION['user_id'])) {
-    // If user is logged in, show the Log Out button
-    echo '<a href="logout.php">Log Out</a>';
-} else {
-    // If user is not logged in, show the Log In button
-    echo '<a href="index.php">Log In</a>';
-}
-?>
-    </div>
+            echo '<a href="show_reviews.php">Reviews</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="chat.php">Chat with Admin</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="logout.php">Log Out</a>';
+        } else {
+            echo '<a href="index.php">Log In</a>';
+        }
+        ?>
+    </ul>
 </nav>
 
 <!-- Account Settings Form -->
@@ -187,5 +231,19 @@ $query->close();
     </form>
 </div>
 
+<script>
+    function toggleMenu() {
+        document.getElementById("navLinks").classList.toggle("show");
+    }
+
+    // Close menu if clicked outside
+    document.addEventListener("click", function(event) {
+        const menu = document.getElementById("navLinks");
+        const button = document.querySelector(".menu-toggle");
+        if (!menu.contains(event.target) && !button.contains(event.target)) {
+            menu.classList.remove("show");
+        }
+    });
+</script>
 </body>
 </html>

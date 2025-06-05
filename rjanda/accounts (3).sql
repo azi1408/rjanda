@@ -34,8 +34,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `update_dashboard_stats` ()   BEGIN
     SELECT 
         DATE(order_date) as date_recorded,
         COUNT(*) as total_orders,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
-        SUM(amount) as total_sales,
+        SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed_orders,
+        SUM(total_price) as total_sales,
         'daily' as period_type,
         DATE_FORMAT(order_date, '%Y-%m-%d') as period_value
     FROM orders
@@ -47,8 +47,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `update_dashboard_stats` ()   BEGIN
     SELECT 
         MAX(DATE(order_date)) as date_recorded,
         COUNT(*) as total_orders,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
-        SUM(amount) as total_sales,
+        SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed_orders,
+        SUM(total_price) as total_sales,
         'weekly' as period_type,
         DATE_FORMAT(order_date, '%Y-%u') as period_value
     FROM orders
@@ -60,8 +60,8 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `update_dashboard_stats` ()   BEGIN
     SELECT 
         MAX(DATE(order_date)) as date_recorded,
         COUNT(*) as total_orders,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders,
-        SUM(amount) as total_sales,
+        SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed_orders,
+        SUM(total_price) as total_sales,
         'monthly' as period_type,
         DATE_FORMAT(order_date, '%Y-%m') as period_value
     FROM orders

@@ -26,9 +26,9 @@ if (isset($_POST['email']) && isset($_POST['password'])) {
             $_SESSION['user_role'] = $user_role;  // Store user role in session (admin or user)
 
             // Redirect based on user role
-            if ($user_role == 'admin') {
-                header('Location: admin_home.php');  // Admin dashboard
-            } else if ($user_role == 'moderator') {
+            if ($user_role === 'admin') {
+                header('Location: admin_dashboard.php');  // Admin dashboard
+            } else if ($user_role === 'moderator') {
                 header('Location: mod_packages.php');  // Moderator dashboard
             } else {
                 header('Location: home.php');  // Regular user dashboard

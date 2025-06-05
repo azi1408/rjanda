@@ -43,49 +43,67 @@ $result = $stmt->get_result();
             color: #f1f1f1;
         }
 
-        .navbar {
-            background-color: #111;
+        nav {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 15px 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 1rem 2rem;
         }
 
-        .navbar .logo-img {
+        .nav-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-img {
             width: 60px;
             height: 60px;
             border-radius: 50%;
             object-fit: cover;
             border: 2px solid white;
-            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
 
-        .navbar .title {
-            font-size: 1.8em;
-            color: #f1f1f1;
-            margin-left: 20px;
-        }
-
-        .navbar ul {
-            list-style: none;
-            display: flex;
-            gap: 20px;
-            margin: 0;
-            padding: 0;
-        }
-
-        .navbar ul li a {
+        /* Hamburger Menu Styles */
+        .menu-toggle {
+            font-size: 28px;
+            background: none;
+            border: none;
             color: beige;
-            text-decoration: none;
-            font-weight: 500;
+            cursor: pointer;
+            display: block;
         }
 
-        .navbar ul li a:hover {
-            color: #d4b895;
+        .nav-links {
+            display: none;
+            flex-direction: column;
+            position: absolute;
+            top: 70px;
+            right: 30px;
+            background-color: #222;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-links.show {
+            display: flex;
         }
 
         .container {
@@ -135,36 +153,20 @@ $result = $stmt->get_result();
         }
 
         .pay-btn {
-            background-color: #d4b895;
-            color: #222;
-            border: none;
-            padding: 10px 15px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
+            background-color: #4CAF50 !important;
+            color: white !important;
+            padding: 12px 30px !important;
+            font-size: 16px !important;
+            border: none !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            transition: background-color 0.3s !important;
+            margin: 20px auto !important;
+            display: block !important;
         }
 
         .pay-btn:hover {
-            background-color: #caa97a;
-        }
-
-        .status-paid {
-            color: #4caf50;
-            font-weight: bold;
-        }
-
-        .status-pending {
-            color: #ffc107;
-            font-weight: bold;
-        }
-
-        .gcash-note {
-            background: #eee;
-            padding: 10px;
-            border-radius: 6px;
-            color: #333;
-            margin-top: 10px;
-            font-size: 0.95em;
+            background-color: #45a049 !important;
         }
 
         .pay-btn.cancel {
@@ -234,20 +236,49 @@ $result = $stmt->get_result();
     color: white;
 }
 
+.pay-section {
+    position: relative;
+    padding-bottom: 60px;
+}
 
     </style>
 </head>
 <body>
 
-<nav class="navbar">
-    <div style="display: flex; align-items: center;">
+<nav>
+    <div class="nav-left">
         <img src="logo.jfif" alt="Logo" class="logo-img">
-        <span class="title">RJ & A Catering Services</span>
+        <span style="color: white; font-size: 1.2em; font-weight: bold;">RJ & A Catering Services</span>
     </div>
-    <ul>
-        <li><a href="home.php">Home</a></li>
-        <li><a href="account.php" class="account-link">Account Settings</a></li>
-        <li><a href="orders.php">Packages</a></li>
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+    <ul id="navLinks" class="nav-links">
+        <?php
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="home.php">Home</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="orders.php">Packages</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="order_details.php">Payment Methods</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="show_reviews.php">Reviews</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="chat.php">Chat with Admin</a>';
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            echo '<a href="logout.php">Log Out</a>';
+        } else {
+            echo '<a href="index.php">Log In</a>';
+        }
+        ?>
     </ul>
 </nav>
 <div id="passwordModal" class="modal-overlay">
@@ -347,13 +378,8 @@ $result = $stmt->get_result();
                                 <form method="post" action="submit_payment.php" id="payment-form-<?= $row['id'] ?>">
                                     <input type="hidden" name="order_id" value="<?= $row['id'] ?>">
 
-                                    <div class="card-section" id="card-section-<?= $row['id'] ?>" style="margin-top: 10px; display:none;">
-                                        <label>Card Number:</label>
-                                        <input type="text" name="card_number" id="card-input-<?= $row['id'] ?>" placeholder="xxxx-xxxx-xxxx-xxxx">
-                                    </div>
-
                                     <label style="margin-top: 10px;">Payment Method:</label>
-                                    <select name="payment_method" id="payment-method-<?= $row['id'] ?>" required onchange="handlePaymentMethodChange(<?= $row['id'] ?>)">
+                                    <select name="payment_method" id="payment-method-<?= $row['id'] ?>" onchange="handlePaymentMethodChange(<?= $row['id'] ?>)">
                                         <option value="">Select</option>
                                         <option value="GCash">GCash</option>
                                         <option value="Maya">Maya</option>
@@ -367,11 +393,15 @@ $result = $stmt->get_result();
 
                                     <div class="gcash-note" id="maya-note-<?= $row['id'] ?>" style="display:none; text-align: center;">
                                         <p><strong>💳 PAY / SCAN THIS QR CODE TO PROCEED PAYMENT (MAYA)</strong></p>
-                                        <img src="maya_qr.png" alt="Maya QR Code" style="max-width: 200px; border: 2px solid #333; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); margin: 10px auto;">
+                                        <img src="maya.webp" alt="Maya QR Code" style="max-width: 200px; border: 2px solid #333; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); margin: 10px auto;">
                                         <p>Maya Number: <strong>098888888888</strong></p>
                                     </div>
 
-                                    <button type="submit" class="pay-btn">Pay Now</button>
+                                    <div id="pay-button-<?= $row['id'] ?>" style="text-align: center; margin-top: 20px; display: none;">
+                                        <button type="submit" class="pay-btn" style="padding: 12px 30px; font-size: 16px; background-color: #4CAF50; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                            Pay Now
+                                        </button>
+                                    </div>
                                 </form>
                             </div>
                         </td>
@@ -387,6 +417,37 @@ $result = $stmt->get_result();
 <?php include 'review_modal.php'; ?>
 
 <script>
+    // Add this at the beginning of your script section
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add form submission handlers to all payment forms
+        const paymentForms = document.querySelectorAll('form[action="submit_payment.php"]');
+        paymentForms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault(); // Prevent default submission
+                
+                // Get form data
+                const formData = new FormData(this);
+                const paymentMethod = formData.get('payment_method');
+                const proofOfPayment = formData.get('proof_of_payment');
+                
+                // Validate payment method
+                if (!paymentMethod) {
+                    alert('Please select a payment method');
+                    return false;
+                }
+                
+                // Validate proof of payment
+                if (!proofOfPayment || !proofOfPayment.name) {
+                    alert('Please upload proof of payment');
+                    return false;
+                }
+                
+                // If all validations pass, submit the form
+                this.submit();
+            });
+        });
+    });
+
     function togglePasswordVisibility() {
     const input = document.getElementById('confirm_password');
     const type = input.getAttribute('type');
@@ -429,18 +490,95 @@ function handlePaymentMethodChange(orderId) {
     const method = document.getElementById('payment-method-' + orderId).value;
     const gcashNote = document.getElementById('gcash-note-' + orderId);
     const mayaNote = document.getElementById('maya-note-' + orderId);
+    const payButton = document.getElementById('pay-button-' + orderId);
 
-    if (method === '') {
-        gcashNote.style.display = 'none';
-        mayaNote.style.display = 'none';
-    } else if (method === 'GCash') {
+    // Hide all elements first
+    gcashNote.style.display = 'none';
+    mayaNote.style.display = 'none';
+    payButton.style.display = 'none';
+
+    // Show relevant elements based on selection
+    if (method === 'GCash') {
         gcashNote.style.display = 'block';
-        mayaNote.style.display = 'none';
+        payButton.style.display = 'block';
     } else if (method === 'Maya') {
-        gcashNote.style.display = 'none';
         mayaNote.style.display = 'block';
+        payButton.style.display = 'block';
     }
 }
+
+function toggleMenu() {
+    document.getElementById("navLinks").classList.toggle("show");
+}
+
+// Close menu if clicked outside
+document.addEventListener("click", function(event) {
+    const menu = document.getElementById("navLinks");
+    const button = document.querySelector(".menu-toggle");
+    if (!menu.contains(event.target) && !button.contains(event.target)) {
+        menu.classList.remove("show");
+    }
+});
+
+// Add this new function for image preview
+function previewImage(input, previewId) {
+    const preview = document.getElementById(previewId);
+    const previewImg = preview.querySelector('img');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        }
+        
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+// Update the form submission function
+function submitPaymentForm(form) {
+    const formData = new FormData(form);
+    const paymentMethod = formData.get('payment_method');
+    const proofOfPayment = formData.get('proof_of_payment');
+
+    if (!paymentMethod) {
+        alert('Please select a payment method');
+        return false;
+    }
+
+    if (!proofOfPayment || !proofOfPayment.name) {
+        alert('Please select a proof of payment image');
+        return false;
+    }
+
+    // If all validations pass, submit the form
+    form.submit();
+    return true;
+}
+
+// Add form submission handler
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('form[action="submit_payment.php"]');
+    forms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const file = formData.get('proof_of_payment');
+            
+            console.log('Form data:', {
+                order_id: formData.get('order_id'),
+                payment_method: formData.get('payment_method'),
+                file: file
+            });
+            
+            // Submit the form
+            this.submit();
+        });
+    });
+});
 
 </script>
 

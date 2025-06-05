@@ -4,22 +4,16 @@ include('connection.php');
 
 // Check if user is logged in
 if (!isset($_SESSION['user_id'])) {
-    echo "<script>alert('You need to log in first.');</script>";
-    echo "<script>window.location.href = 'index.php';</script>";
+    header("Location: login.php");
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
-$user_name = "";
-
 // Get user's name
 $stmt = $conn->prepare("SELECT name FROM registertb WHERE userid = ?");
-$stmt->bind_param("i", $user_id);
+$stmt->bind_param("i", $_SESSION['user_id']);
 $stmt->execute();
-$stmt->bind_result($name);
-if ($stmt->fetch()) {
-    $user_name = $name;
-}
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
 $stmt->close();
 ?>
 
@@ -33,7 +27,7 @@ $stmt->close();
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html { height: 100%; font-family: 'Open Sans', sans-serif; }
-        body { 
+        body {
             background: linear-gradient(to right, #2f2f2f, #e0d6c3); 
             color: #fff;
             overflow-x: hidden;
@@ -57,45 +51,66 @@ $stmt->close();
             66% { background-image: url('bg-3.jpg'); }
         }
 
-        nav { 
-            background-color: rgba(0, 0, 0, 0.6); 
-            display: flex; 
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
             justify-content: space-between;
             padding: 1rem 2rem;
             align-items: center;
         }
-        
-        nav a { 
-            color: white; 
-            text-decoration: none; 
-            margin-left: 2rem; 
-            font-size: 1rem;
-            transition: color 0.3s ease;
-        }
-        
-        nav a:hover { 
-            color: #d4b895; 
-        }
 
-        .nav-left {
+        .navbar-left {
             display: flex;
             align-items: center;
             gap: 15px;
         }
 
-        .logo-img { 
-            width: 60px; 
-            height: 60px; 
-            border-radius: 50%; 
-            object-fit: cover; 
-            border: 2px solid white; 
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2); 
+        .logo-img {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
 
-        .greeting {
-            margin-left: 15px;
-            font-size: 1.1rem;
-            color: #f0e6d2;
+        .menu-toggle {
+            font-size: 28px;
+            background: none;
+            border: none;
+            color: beige;
+            cursor: pointer;
+            display: block;
+        }
+
+        .nav-links {
+            display: none;
+            flex-direction: column;
+            position: absolute;
+            top: 70px;
+            right: 30px;
+            background-color: #222;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-links.show {
+            display: flex;
         }
 
         .chat-container {
@@ -117,16 +132,11 @@ $stmt->close();
             height: 100%;
         }
 
-        .chat-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .admin-status {
+            padding: 15px;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
             margin-bottom: 20px;
-        }
-
-        .status-container {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -136,16 +146,11 @@ $stmt->close();
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background-color: #4CAF50;
+            background-color: #ff4444;
         }
 
-        .status-indicator.offline {
-            background-color: #f44336;
-        }
-
-        .status-text {
-            color: #fff;
-            font-size: 0.9em;
+        .status-indicator.online {
+            background-color: #28a745;
         }
 
         .chat-messages {
@@ -166,13 +171,13 @@ $stmt->close();
         }
 
         .message.user {
-            margin-right: auto;
-            align-items: flex-start;
+            margin-left: auto;
+            align-items: flex-end;
         }
 
         .message.admin {
-            margin-left: auto;
-            align-items: flex-end;
+            margin-right: auto;
+            align-items: flex-start;
         }
 
         .message-content {
@@ -183,16 +188,23 @@ $stmt->close();
             word-wrap: break-word;
         }
 
-        .user .message-content {
-            background-color: #444;
-            color: #fff;
-            border-bottom-left-radius: 5px;
+        .message-content img {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            margin-top: 5px;
         }
 
-        .admin .message-content {
+        .user .message-content {
             background-color: #d4b895;
             color: #2f2f2f;
             border-bottom-right-radius: 5px;
+        }
+
+        .admin .message-content {
+            background-color: #444;
+            color: #fff;
+            border-bottom-left-radius: 5px;
         }
 
         .message-time {
@@ -200,6 +212,17 @@ $stmt->close();
             color: #888;
             margin-top: 5px;
             padding: 0 5px;
+        }
+
+        .message-sender {
+            font-size: 0.8em;
+            color: #d4b895;
+            margin-bottom: 3px;
+            font-weight: bold;
+        }
+
+        .admin .message-sender {
+            color: #d4b895;
         }
 
         .chat-input {
@@ -235,56 +258,35 @@ $stmt->close();
         .chat-input button:hover {
             background-color: #c4a985;
         }
-
-        .clear-chat-btn {
-            padding: 8px 16px;
-            background-color: #ff4444;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9em;
-            transition: background-color 0.3s;
-        }
-
-        .clear-chat-btn:hover {
-            background-color: #ff0000;
-        }
     </style>
 </head>
 <body>
     <div class="background-slider"></div>
 
-    <nav>
-        <div class="nav-left">
+    <nav class="navbar">
+        <div class="navbar-left">
             <img src="logo.jfif" alt="Logo" class="logo-img">
-            <?php if (!empty($user_name)) {
-                echo "<span class='greeting'>Hello, <strong>$user_name</strong>!</span>";
-            } ?>
         </div>
-        <div>
+        <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+        <ul id="navLinks" class="nav-links">
             <a href="home.php">Home</a>
-            <a href="account.php">Account Settings</a>
             <a href="orders.php">Packages</a>
-            <a href="show_reviews.php">Reviews</a>
-            <a href="logout.php">Log Out</a>
-        </div>
+            <a href="order_details.php">Payment Methods</a>
+            <a href="logout.php">Logout</a>
+        </ul>
     </nav>
 
     <div class="chat-container">
         <div class="chat-box">
-            <div class="chat-header">
-                <div class="status-container">
-                    <div class="status-indicator"></div>
-                    <span id="adminStatus" class="status-text">Checking admin status...</span>
-                </div>
-                <button class="clear-chat-btn" onclick="clearChat()">Clear Chat</button>
+            <div class="admin-status">
+                <div class="status-indicator" id="adminStatus"></div>
+                <span id="adminStatusText">Admin is offline</span>
             </div>
-            <div class="chat-messages" id="chatMessages">
-                <!-- Messages will be loaded here -->
-            </div>
+            <div id="chatMessages" class="chat-messages"></div>
             <div class="chat-input">
                 <input type="text" id="messageInput" placeholder="Type your message..." autocomplete="off">
+                <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                <button onclick="document.getElementById('imageInput').click()" style="background-color: #666;">📷</button>
                 <button onclick="sendMessage()">Send</button>
             </div>
         </div>
@@ -292,73 +294,126 @@ $stmt->close();
 
     <script>
         let lastMessageId = 0;
-        const userId = <?php echo $user_id; ?>;
-        const userName = "<?php echo $user_name; ?>";
 
-        function updateAdminStatus() {
+        // Function to handle image upload
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('sender_type', 'user');
+
+                fetch('upload_chat_image.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadMessages();
+                    } else {
+                        alert('Error uploading image: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error uploading image');
+                });
+            }
+        });
+
+        // Function to check admin status
+        function checkAdminStatus() {
             fetch('check_admin_status.php')
                 .then(response => response.json())
                 .then(data => {
-                    const statusElement = document.getElementById('adminStatus');
+                    const statusIndicator = document.getElementById('adminStatus');
+                    const statusText = document.getElementById('adminStatusText');
+                    
                     if (data.online) {
-                        statusElement.textContent = 'Admin is online';
-                        statusElement.classList.add('online');
+                        statusIndicator.classList.add('online');
+                        statusText.textContent = 'Admin is online';
                     } else {
-                        statusElement.textContent = 'Admin is offline';
-                        statusElement.classList.remove('online');
+                        statusIndicator.classList.remove('online');
+                        statusText.textContent = 'Admin is offline';
                     }
                 });
         }
 
+        // Function to load messages
         function loadMessages() {
-            fetch(`get_messages.php?last_id=${lastMessageId}`)
+            fetch('get_messages.php')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.messages.length > 0) {
-                        data.messages.forEach(message => {
-                            if (message.id > lastMessageId) {
-                                addMessageToChat(message);
-                                lastMessageId = message.id;
-                            }
-                        });
-                    }
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = '';
+                    
+                    data.forEach(message => {
+                        const messageDiv = document.createElement('div');
+                        const isUserMessage = message.sender_type === 'user';
+                        messageDiv.className = `message ${isUserMessage ? 'user' : 'admin'}`;
+                        
+                        if (!isUserMessage) {
+                            const senderDiv = document.createElement('div');
+                            senderDiv.className = 'message-sender';
+                            senderDiv.textContent = 'Admin';
+                            messageDiv.appendChild(senderDiv);
+                        }
+                        
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'message-content';
+                        
+                        // Check if message is an image
+                        if (message.message.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+                            const img = document.createElement('img');
+                            img.src = 'chat_images/' + message.message;
+                            img.alt = 'Chat image';
+                            img.style.maxWidth = '200px';
+                            img.style.maxHeight = '200px';
+                            img.style.borderRadius = '8px';
+                            img.style.marginTop = '5px';
+                            img.style.display = 'block';
+                            contentDiv.appendChild(img);
+                        } else {
+                            contentDiv.textContent = message.message;
+                        }
+                        
+                        const timeDiv = document.createElement('div');
+                        timeDiv.className = 'message-time';
+                        timeDiv.textContent = new Date(message.created_at).toLocaleString();
+                        
+                        messageDiv.appendChild(contentDiv);
+                        messageDiv.appendChild(timeDiv);
+                        chatMessages.appendChild(messageDiv);
+                        
+                        if (message.id > lastMessageId) {
+                            lastMessageId = message.id;
+                        }
+                    });
+                    
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 });
         }
 
-        function addMessageToChat(message) {
-            const chatMessages = document.getElementById('chatMessages');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${message.is_admin ? 'admin' : 'user'}`;
-            
-            const time = new Date(message.created_at).toLocaleTimeString();
-            
-            messageDiv.innerHTML = `
-                <div class="message-content">${message.message}</div>
-                <div class="message-time">${time}</div>
-            `;
-            
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
+        // Function to send message
         function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
             if (message) {
+                const formData = new FormData();
+                formData.append('message', message);
+                formData.append('sender_type', 'user');
+
                 fetch('send_message.php', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `message=${encodeURIComponent(message)}`
+                    body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
                         input.value = '';
-                        // Update lastMessageId to prevent duplicate loading
-                        lastMessageId = data.message_id;
+                        loadMessages();
                     }
                 });
             }
@@ -371,36 +426,26 @@ $stmt->close();
             }
         });
 
-        function clearChat() {
-            if (confirm('Are you sure you want to clear this chat? This will delete all messages.')) {
-                fetch('clear_chat.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `user_id=${userId}`
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Clear the chat view
-                        document.getElementById('chatMessages').innerHTML = '';
-                        // Reset lastMessageId
-                        lastMessageId = 0;
-                        // Reload messages
-                        loadMessages();
-                    }
-                });
-            }
-        }
+        // Auto refresh messages and admin status
+        setInterval(loadMessages, 3000);
+        setInterval(checkAdminStatus, 5000);
 
         // Initial load
         loadMessages();
-        updateAdminStatus();
+        checkAdminStatus();
 
-        // Poll for new messages and admin status
-        setInterval(loadMessages, 3000);
-        setInterval(updateAdminStatus, 10000);
+        function toggleMenu() {
+            document.getElementById("navLinks").classList.toggle("show");
+        }
+
+        // Close menu if clicked outside
+        document.addEventListener("click", function(event) {
+            const menu = document.getElementById("navLinks");
+            const button = document.querySelector(".menu-toggle");
+            if (!menu.contains(event.target) && !button.contains(event.target)) {
+                menu.classList.remove("show");
+            }
+        });
     </script>
 </body>
 </html> 

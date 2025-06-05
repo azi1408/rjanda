@@ -127,51 +127,37 @@ if (isset($_POST['update_role'])) {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 15px 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
         }
 
-        .navbar .logo-img {
-            width: 60px;
-            height: 60px;
+        .navbar-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .greeting {
+            font-size: 1.2rem;
+            color: #f7f2e9;
+            margin-left: 15px;
+        }
+
+        .logo-img {
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             object-fit: cover;
-            border: 2px solid white;
-            box-shadow: 0 0 8px rgba(0,0,0,0.3);
-        }
-
-        .navbar .title {
-            font-size: 1.8em;
-            color: #f1f1f1;
-            margin-left: 20px;
-        }
-
-        .navbar ul {
-            list-style: none;
-            gap: 20px;
-            margin: 0;
-            padding: 0;
-        }
-
-        .navbar ul li a {
-            color: beige;
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .navbar ul li a:hover {
-            color: #d4b895;
+            margin-right: 10px;
+            border: 2px solid beige;
         }
 
         .container {
-            max-width: 1000px;
-            margin: 40px auto;
-            padding: 20px;
-            background-color: #3e3e3e;
-            border-radius: 12px;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 15px;
         }
 
         h2 {
@@ -182,60 +168,74 @@ if (isset($_POST['update_role'])) {
         table {
             width: 100%;
             border-collapse: collapse;
-            background-color: #2a2a2a;
+            background-color: #3e3e3e;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
         }
 
         th, td {
-            padding: 15px;
-            border-bottom: 1px solid #555;
+            padding: 12px;
             text-align: left;
+            border-bottom: 1px solid #3e3e3e;
         }
 
         th {
-            background-color: #444;
-            color: beige;
+            background-color: #1a1a1a;
+            color: #d4b895;
+            font-weight: 500;
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
         }
 
         tr:hover {
-            background-color: #444;
+            background-color: #323232;
         }
 
-        button {
-            background-color: #d4b895;
-            color: #222;
-            border: none;
-            padding: 8px 12px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #caa97a;
-        }
-
+        /* Role status styling */
         .status-admin {
+            background-color: rgba(76, 175, 80, 0.2);
             color: #4caf50;
-            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
         }
 
         .status-user {
+            background-color: rgba(255, 152, 0, 0.2);
             color: #ff9800;
-            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
         }
 
         .status-moderator {
+            background-color: rgba(33, 150, 243, 0.2);
             color: #2196f3;
-            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+        }
+
+        /* Form and button styling */
+        form {
+            display: inline-block;
+            margin: 2px;
         }
 
         .role-select {
             padding: 6px 10px;
             border-radius: 4px;
-            border: 1px solid #555;
+            border: 1px solid #3e3e3e;
             background-color: #2a2a2a;
             color: #fff;
             cursor: pointer;
+            font-size: 0.9em;
+            transition: border-color 0.3s ease;
         }
 
         .role-select:focus {
@@ -243,14 +243,25 @@ if (isset($_POST['update_role'])) {
             border-color: #d4b895;
         }
 
+        button {
+            background-color: #d4b895;
+            color: #222;
+            border: none;
+            padding: 6px 12px;
+            font-size: 0.9em;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #caa97a;
+        }
+
         .update-role-btn {
             background-color: #2196f3;
             color: white;
-            border: none;
-            padding: 8px 12px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
             margin-left: 10px;
         }
 
@@ -267,24 +278,25 @@ if (isset($_POST['update_role'])) {
             background-color: #d32f2f;
         }
 
+        /* Navigation menu styles */
         .menu-toggle {
-            font-size: 28px;
+            font-size: 24px;
             background: none;
             border: none;
             color: beige;
             cursor: pointer;
-            display: block; /* Always show */
+            display: block;
         }
 
         .nav-links {
             display: none;
             flex-direction: column;
             position: absolute;
-            top: 70px;
-            right: 30px;
+            top: 50px;
+            right: 20px;
             background-color: #222;
             border-radius: 8px;
-            padding: 10px 0;
+            padding: 8px 0;
             box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
             z-index: 1000;
         }
@@ -293,8 +305,39 @@ if (isset($_POST['update_role'])) {
             display: flex;
         }
 
-        .menu-toggle {
-            display: block;
+        .nav-links li {
+            padding: 8px 15px;
+        }
+
+        .nav-links a {
+            color: beige;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .nav-links a:hover {
+            color: #d4b895;
+        }
+
+        @media screen and (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            table {
+                font-size: 0.9em;
+            }
+
+            td button {
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
+
+            .role-select {
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
         }
     </style>
 </head>
@@ -307,14 +350,13 @@ if (isset($_POST['update_role'])) {
             echo "<span class='greeting'>Hello, <strong>$user_name</strong>!</span>";
         } ?>
     </div>
-
-    <!-- Hamburger Icon -->
     <button class="menu-toggle" onclick="toggleMenu()">☰</button>
-
-    <!-- Nav Links -->
     <ul id="navLinks" class="nav-links">
         <li><a href="admin_dashboard.php">Dashboard</a></li>
         <li><a href="admin_home.php">Orders</a></li>
+        <li><a href="admin_users.php">Users</a></li>
+        <li><a href="admin_reviews.php">Reviews</a></li>
+        <li><a href="admin_chat.php">💬 Chat</a></li>
         <li><a href="logout.php">Logout</a></li>
     </ul>
 </nav>

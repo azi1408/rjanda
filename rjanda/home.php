@@ -195,6 +195,49 @@ nav span.greeting {
     font-size: 1.1rem;
     color: #f0e6d2;
 }
+.menu-toggle {
+            font-size: 28px;
+            background: none;
+            border: none;
+            color: beige;
+            cursor: pointer;
+            display: block; /* Always show */
+        }
+
+        .nav-links {
+            display: none;
+            flex-direction: column;
+            position: absolute;
+            top: 70px;
+            right: 30px;
+            background-color: #222;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-links.show {
+            display: flex;
+        }
+
+        .menu-toggle {
+            display: block;
+        }
+
     </style>
 
 </head>
@@ -210,9 +253,9 @@ nav span.greeting {
             echo "<span class='greeting'>Hello, <strong>$user_name</strong>!</span>";
         } ?>
     </div>
-
+    <button class="menu-toggle" onclick="toggleMenu()">☰</button>
     <!-- Right Side: Navigation Links -->
-    <div style="display: flex; justify-content: flex-end; width: 100%;">
+    <ul id="navLinks" class="nav-links">
         <?php
         if (isset($_SESSION['user_id'])) {
             // If user is logged in, show the Account Settings button
@@ -245,7 +288,7 @@ nav span.greeting {
             echo '<a href="index.php">Log In</a>';
         }
         ?>
-    </div>
+    </ul>
 </nav>
 
     <div id="passwordModal" class="modal-overlay">
@@ -266,6 +309,19 @@ nav span.greeting {
         <p class="tagline">From Ordinary to Extraordinary, We Cater with Ingenuity.</p>
     </div>
     <script>
+        function toggleMenu() {
+        document.getElementById("navLinks").classList.toggle("show");
+    }
+
+    // Close menu if clicked outside
+    document.addEventListener("click", function(event) {
+        const menu = document.getElementById("navLinks");
+        const button = document.querySelector(".menu-toggle");
+        if (!menu.contains(event.target) && !button.contains(event.target)) {
+            menu.classList.remove("show");
+        }
+    });
+
     function openPasswordPopup() {
         const modal = document.getElementById('passwordModal');
         modal.classList.add('show');

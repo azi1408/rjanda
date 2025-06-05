@@ -3,17 +3,34 @@ session_start();
 include('connection.php');
 
 // Check if user is logged in and is a moderator
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'moderator') {
-    header('Location: index.php');
-    exit;
+if (!isset($_SESSION['user_id'])) {
+    echo "<script>alert('You need to log in first.'); window.location.href = 'index.php';</script>";
+    exit();
 }
 
-// Fetch all reviews with user and order information
-$sql = "SELECT r.*, rt.name as user_name, o.package_name, o.event_date 
-        FROM reviews r 
-        JOIN registertb rt ON r.user_id = rt.userid 
-        JOIN orders o ON r.order_id = o.id 
-        ORDER BY r.created_at DESC";
+$user_id = $_SESSION['user_id'];
+$user_name = "";
+
+// Check if user is admin or moderator
+$query = "SELECT name, role FROM registertb WHERE userid = ?";
+$stmt = $conn->prepare($query);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$stmt->bind_result($name, $role);
+$stmt->fetch();
+$stmt->close();
+
+// Allow only admin and moderator roles
+if ($role !== 'admin' && $role !== 'moderator') {
+    header("Location: forbidden.php");
+    exit();
+}
+
+// Fetch reviews for completed orders
+$sql = "SELECT o.id, o.order_date, o.customer_name, o.event_type, o.selected_dishes, o.selected_desserts, o.status, o.reviews, o.rating 
+        FROM orders o 
+        WHERE o.status = 'done' AND o.reviews IS NOT NULL AND o.reviews != '' 
+        ORDER BY o.order_date DESC";
 $result = $conn->query($sql);
 ?>
 
@@ -21,187 +38,217 @@ $result = $conn->query($sql);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Customer Reviews - Moderator View</title>
+    <title>Moderator - User Reviews</title>
     <style>
         body {
             font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(to bottom right, #323232, #d4b895);
-            color: #fff;
+            background-color: #2e2e2e;
+            color: #f1f1f1;
             margin: 0;
-            padding: 20px;
         }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #d4b895;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .reviews-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-
-        .review-card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .review-header {
+        .navbar {
+            background-color: #111;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            justify-content: space-between;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
-
-        .reviewer-name {
-            font-weight: bold;
+        .navbar-left {
+            display: flex;
+            align-items: center;
+        }
+        .greeting {
+            font-size: 1.5rem;
+            color: #f7f2e9;
+            margin-left: 25px;
+        }
+        .logo-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 15px;
+            border: 2px solid beige;
+        }
+        .hamburger {
+            display: none;
+            cursor: pointer;
+            padding: 10px;
+        }
+        .hamburger-line {
+            width: 25px;
+            height: 3px;
+            background-color: beige;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+        }
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+        .nav-links a {
+            color: beige;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+        .nav-links a:hover {
             color: #d4b895;
         }
-
-        .review-date {
-            color: #888;
-            font-size: 0.9em;
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background-color: #3e3e3e;
+            padding: 30px;
+            border-radius: 12px;
         }
-
-        .rating {
+        h2 {
+            color: #d4b895;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #555;
+        }
+        th {
+            background-color: #444;
+            color: beige;
+        }
+        tr:hover {
+            background-color: #383838;
+        }
+        .review-box {
+            background: #232323;
+            color: #f1f1f1;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 0;
+            font-size: 1.05em;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .star-rating {
             color: #ffd700;
             font-size: 1.2em;
-            margin: 10px 0;
+            margin: 5px 0;
         }
-
-        .review-content {
-            color: #fff;
-            line-height: 1.5;
-            margin: 10px 0;
-        }
-
-        .package-info {
-            color: #d4b895;
-            font-size: 0.9em;
-            margin-top: 10px;
-        }
-
-        .event-date {
-            color: #888;
-            font-size: 0.9em;
-        }
-
-        .stats {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .stats h2 {
-            color: #d4b895;
-            margin-bottom: 15px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .stat-item {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 8px;
-        }
-
-        .stat-value {
-            font-size: 2em;
-            color: #d4b895;
-            margin: 10px 0;
-        }
-
-        .stat-label {
-            color: #888;
-            font-size: 0.9em;
+        @media screen and (max-width: 768px) {
+            .hamburger {
+                display: block;
+            }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                right: 0;
+                background-color: #111;
+                width: 200px;
+                padding: 20px;
+                flex-direction: column;
+                gap: 15px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                z-index: 1000;
+            }
+            .nav-links.active {
+                display: flex;
+            }
+            .hamburger.active .hamburger-line:nth-child(1) {
+                transform: rotate(-45deg) translate(-5px, 6px);
+            }
+            .hamburger.active .hamburger-line:nth-child(2) {
+                opacity: 0;
+            }
+            .hamburger.active .hamburger-line:nth-child(3) {
+                transform: rotate(45deg) translate(-5px, -6px);
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Customer Reviews</h1>
-
-        <?php
-        // Calculate review statistics
-        $total_reviews = $result->num_rows;
-        $avg_rating = 0;
-        $rating_counts = array_fill(1, 5, 0);
-        
-        if ($total_reviews > 0) {
-            $result->data_seek(0);
-            $total_rating = 0;
-            while ($row = $result->fetch_assoc()) {
-                $total_rating += $row['rating'];
-                $rating_counts[$row['rating']]++;
-            }
-            $avg_rating = round($total_rating / $total_reviews, 1);
-        }
-        ?>
-
-        <div class="stats">
-            <h2>Review Statistics</h2>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="stat-value"><?php echo $total_reviews; ?></div>
-                    <div class="stat-label">Total Reviews</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value"><?php echo $avg_rating; ?></div>
-                    <div class="stat-label">Average Rating</div>
-                </div>
-                <?php for ($i = 5; $i >= 1; $i--): ?>
-                <div class="stat-item">
-                    <div class="stat-value"><?php echo $rating_counts[$i]; ?></div>
-                    <div class="stat-label"><?php echo $i; ?> Star Reviews</div>
-                </div>
-                <?php endfor; ?>
-            </div>
-        </div>
-
-        <div class="reviews-grid">
-            <?php
-            $result->data_seek(0);
-            while ($row = $result->fetch_assoc()):
-            ?>
-            <div class="review-card">
-                <div class="review-header">
-                    <span class="reviewer-name"><?php echo htmlspecialchars($row['user_name']); ?></span>
-                    <span class="review-date"><?php echo date('M j, Y', strtotime($row['created_at'])); ?></span>
-                </div>
-                <div class="rating">
-                    <?php for ($i = 0; $i < $row['rating']; $i++) echo "★"; ?>
-                    <?php for ($i = $row['rating']; $i < 5; $i++) echo "☆"; ?>
-                </div>
-                <div class="review-content">
-                    <?php echo htmlspecialchars($row['comment']); ?>
-                </div>
-                <div class="package-info">
-                    Package: <?php echo htmlspecialchars($row['package_name']); ?>
-                </div>
-                <div class="event-date">
-                    Event Date: <?php echo date('F j, Y', strtotime($row['event_date'])); ?>
-                </div>
-            </div>
-            <?php endwhile; ?>
-        </div>
+<nav class="navbar">
+    <div class="navbar-left">
+        <img src="logo.jfif" alt="Logo" class="logo-img">
+        <span class="greeting">Hello, <strong><?= htmlspecialchars($name) ?></strong>!</span>
     </div>
+    <div class="hamburger" onclick="toggleMenu()">
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+    </div>
+    <div class="nav-links">
+        <a href="mod_packages.php">Manage Packages</a>
+        <a href="mod_add_packages.php">Add Package</a>
+        <a href="mod_review_page.php">User Reviews</a>
+        <a href="logout.php">Logout</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>📝 User Reviews for Completed Orders</h2>
+    <table>
+        <tr>
+            <th>Order ID</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Event Type</th>
+            <th>Dishes</th>
+            <th>Desserts</th>
+            <th>Rating</th>
+            <th>Review</th>
+        </tr>
+        <?php if ($result && $result->num_rows > 0): ?>
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <tr>
+                    <td><?= htmlspecialchars($row['id']) ?></td>
+                    <td><?= htmlspecialchars($row['order_date']) ?></td>
+                    <td><?= htmlspecialchars($row['customer_name']) ?></td>
+                    <td><?= htmlspecialchars($row['event_type']) ?></td>
+                    <td><?= nl2br(htmlspecialchars($row['selected_dishes'])) ?></td>
+                    <td><?= nl2br(htmlspecialchars($row['selected_desserts'])) ?></td>
+                    <td>
+                        <div class="star-rating">
+                            <?php for ($i = 0; $i < $row['rating']; $i++) echo "★"; ?>
+                            <?php for ($i = $row['rating']; $i < 5; $i++) echo "☆"; ?>
+                        </div>
+                    </td>
+                    <td><div class="review-box">"<?= nl2br(htmlspecialchars($row['reviews'])) ?>"</div></td>
+                </tr>
+            <?php endwhile; ?>
+        <?php else: ?>
+            <tr><td colspan="8" style="text-align:center; color:#ccc;">No reviews found.</td></tr>
+        <?php endif; ?>
+    </table>
+</div>
+
+<script>
+function toggleMenu() {
+    const navLinks = document.querySelector('.nav-links');
+    const hamburger = document.querySelector('.hamburger');
+    navLinks.classList.toggle('active');
+    hamburger.classList.toggle('active');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(event) {
+    const navLinks = document.querySelector('.nav-links');
+    const hamburger = document.querySelector('.hamburger');
+    if (!event.target.closest('.nav-links') && !event.target.closest('.hamburger')) {
+        navLinks.classList.remove('active');
+        hamburger.classList.remove('active');
+    }
+});
+</script>
 </body>
-</html> 
+</html>
+
+<?php $conn->close(); ?> 
